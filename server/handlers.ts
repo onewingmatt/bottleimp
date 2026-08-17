@@ -55,6 +55,7 @@ function roomPublic(room: Room) {
     pausedForReconnect: !!room.pausedForReconnect,
     matchTarget: room.matchTarget,
     matchWinnerId: room.matchWinnerId,
+    fastBots: room.botDelayMs === FAST_BOT_DELAY_MS,
     players: room.players.map((p) => ({
       id: p.id,
       name: p.name,

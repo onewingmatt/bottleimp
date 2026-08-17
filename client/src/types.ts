@@ -48,6 +48,7 @@ export interface RoomState {
   hostId: string
   inGame: boolean
   pausedForReconnect?: boolean
+  fastBots?: boolean
   matchTarget: number
   matchWinnerId: string | null
   players: RoomPlayer[]

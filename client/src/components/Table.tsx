@@ -1,7 +1,41 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useStore } from '../store'
 import { getSocket } from '../socket'
 import type { Card } from '../../../shared/types'
+
+// Reconstructed completed tricks from the engine history, for the trick log.
+interface TrickLogEntry {
+  price: number
+  plays: { playerId: string; card: Card }[]
+  winnerId: string
+  winningCard: Card
+  bottleChanged: boolean
+  newPrice: number | null
+}
+
+function buildTrickLog(history: unknown[]): TrickLogEntry[] {
+  const entries: TrickLogEntry[] = []
+  let current: { price: number; plays: { playerId: string; card: Card }[] } | null = null
+  for (const h of history) {
+    const ev = h as { type?: string; [k: string]: unknown }
+    if (ev.type === 'trick_start') {
+      current = { price: ev.price as number, plays: [] }
+    } else if (ev.type === 'play' && current) {
+      current.plays.push({ playerId: ev.playerId as string, card: ev.card as Card })
+    } else if (ev.type === 'trick_end' && current) {
+      entries.push({
+        price: current.price,
+        plays: current.plays,
+        winnerId: ev.winnerId as string,
+        winningCard: ev.winningCard as Card,
+        bottleChanged: ev.bottleChanged as boolean,
+        newPrice: ev.newPrice as number | null,
+      })
+      current = null
+    }
+  }
+  return entries
+}
 
 const SUIT_COLOR: Record<string, string> = {
   red: '#e05252',
@@ -43,6 +77,7 @@ export function Table() {
   const totals = useStore((s) => s.totals)
   const matchWinnerId = useStore((s) => s.matchWinnerId)
   const matchTarget = useStore((s) => s.matchTarget)
+  const fastBots = useStore((s) => s.fastBots)
   const dismissScored = useStore((s) => s.dismissScored)
   const roomPaused = useStore((s) => s.room?.pausedForReconnect === true)
   // Local (not store) selection for the exchange: exactly two distinct cards.
@@ -102,16 +137,34 @@ export function Table() {
   const bottleHolder = game.players.find((p) => p.id === game.bottleHolderId)
   const matchWinner = matchWinnerId ? game.players.find((p) => p.id === matchWinnerId) : null
 
+  // Last completed trick(s), for the center strip and bottle-transition callout.
+  const trickLog = useMemo(() => buildTrickLog(game.history ?? []), [game.history])
+  const lastTrick = trickLog[trickLog.length - 1]
+  const lastBottle = [...trickLog].reverse().find((t) => t.bottleChanged)
+
   return (
     <div style={{ width: '100%', maxWidth: 900 }}>
       {/* Opponents */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <span className="muted" style={{ fontSize: '0.8rem' }}>
+          First to {matchTarget}
+        </span>
+        <button
+          className="secondary"
+          onClick={() => socket?.emit('game:setSpeed', { fast: !fastBots })}
+          style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+          title="Toggle bot action speed"
+        >
+          {fastBots ? '⚡ fast bots' : '🐢 normal bots'}
+        </button>
+      </div>
       {roomPaused && (
         <div className="error-banner" style={{ marginBottom: 10, textAlign: 'center' }}>
           Game paused — your seat is held. Reconnect (refresh) to resume; no one
           has played your cards.
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginBottom: 10, flexWrap: 'wrap' }}>
         {game.players.filter((p) => p.id !== yourId).map((p) => (
           <div key={p.id} className="panel" style={{ minWidth: 140, margin: 0 }}>
             <div style={{ fontWeight: 700 }}>
@@ -142,7 +195,7 @@ export function Table() {
 
         {/* Current trick */}
         {trick ? (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', minHeight: 120 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', minHeight: 120, flexWrap: 'wrap', justifyContent: 'center' }}>
             {game.playerOrder.map((pid) => {
               const play = trick.plays.find((x) => x.playerId === pid)
               const player = game.players.find((p) => p.id === pid)
@@ -161,6 +214,40 @@ export function Table() {
                 </div>
               )
             })}
+          </div>
+        ) : lastTrick ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', justifyContent: 'center', opacity: 0.85 }}>
+              {lastTrick.plays.map((play, i) => {
+                const player = game.players.find((p) => p.id === play.playerId)
+                const isWinner = play.playerId === lastTrick.winnerId
+                return (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                    <div
+                      className="card"
+                      style={{
+                        width: 56,
+                        height: 80,
+                        borderColor: isWinner ? 'var(--accent-2)' : undefined,
+                        boxShadow: isWinner ? '0 0 10px rgba(255,197,61,0.4)' : undefined,
+                      }}
+                    >
+                      <span style={{ color: SUIT_COLOR[play.card.suit] }}>{SUIT_SYMBOL[play.card.suit]}</span>
+                      <span className="card-number" style={{ fontSize: '1rem' }}>{play.card.number}</span>
+                      <span className="card-coins" style={{ fontSize: '0.6rem' }}>{'●'.repeat(play.card.coins)}</span>
+                    </div>
+                    <span className="muted" style={{ fontSize: '0.7rem' }}>
+                      {player?.name} {isWinner && '🏆'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            {lastBottle && (
+              <div style={{ color: 'var(--accent-2)', fontWeight: 600, fontSize: '0.9rem' }}>
+                🧪 Price fell to {lastBottle.newPrice} — {game.players.find((p) => p.id === lastBottle.winnerId)?.name} took the bottle
+              </div>
+            )}
           </div>
         ) : (
           <div className="muted">Trick complete — waiting for next lead</div>

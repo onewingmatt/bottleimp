@@ -160,3 +160,38 @@ button.danger {
   max-width: 520px;
   width: 90%;
 }
+
+/* Mobile: smaller cards, tighter panels, wrap so nothing overflows. */
+@media (max-width: 640px) {
+  #root > div {
+    padding: 10px !important;
+  }
+  h1 {
+    font-size: 1.3rem;
+  }
+  .card {
+    width: 48px;
+    height: 72px;
+    padding: 4px;
+  }
+  .card .card-number {
+    font-size: 1rem;
+  }
+  .card .card-suit {
+    font-size: 0.52rem;
+  }
+  .card .card-coins {
+    font-size: 0.55rem;
+  }
+  .panel {
+    padding: 12px;
+    margin: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .overlay .panel {
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+}
