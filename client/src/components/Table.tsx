@@ -3,6 +3,18 @@ import { useStore } from '../store'
 import { getSocket } from '../socket'
 import type { Card } from '../../../shared/types'
 
+const SUIT_COLOR: Record<string, string> = {
+  red: '#e05252',
+  blue: '#4f8cc4',
+  yellow: '#e8b93e',
+}
+const SUIT_SYMBOL: Record<string, string> = {
+  red: '●',
+  blue: '■',
+  yellow: '▲',
+}
+const SUIT_ORDER = ['red', 'blue', 'yellow']
+
 function CardView({ card, onClick, selected, playable }: {
   card: Card
   onClick?: (id: string) => void
@@ -14,7 +26,10 @@ function CardView({ card, onClick, selected, playable }: {
       className={`card suit-${card.suit}${selected ? ' selected' : ''}${playable ? ' playable' : ' disabled'}`}
       onClick={() => onClick?.(card.id)}
     >
-      <span className="card-suit">{card.suit}</span>
+      <span className="card-suit">
+        <span style={{ color: SUIT_COLOR[card.suit] }}>{SUIT_SYMBOL[card.suit]}</span>{' '}
+        {card.suit}
+      </span>
       <span className="card-number">{card.number}</span>
       <span className="card-coins">{'●'.repeat(card.coins)}</span>
     </div>
@@ -25,6 +40,8 @@ export function Table() {
   const game = useStore((s) => s.game)
   const yourId = useStore((s) => s.yourId)
   const scored = useStore((s) => s.scored)
+  const totals = useStore((s) => s.totals)
+  const dismissScored = useStore((s) => s.dismissScored)
   // Local (not store) selection for the exchange: exactly two distinct cards.
   const [exchangeSel, setExchangeSel] = useState<string[]>([])
 
@@ -43,6 +60,11 @@ export function Table() {
           ? trick.plays.length < game.players.length &&
             game.playerOrder[(game.playerOrder.indexOf(trick.leaderId) + trick.plays.length) % game.players.length] === yourId
           : false
+
+  // Sort my hand by suit (fixed order) then number, display-only.
+  const sortedHand = [...myHand].sort(
+    (a, b) => SUIT_ORDER.indexOf(a.suit) - SUIT_ORDER.indexOf(b.suit) || a.number - b.number,
+  )
 
   // Legal plays for highlight (only in playing phase).
   const legalIds = (() => {
@@ -148,9 +170,9 @@ export function Table() {
       </div>
 
       {/* My hand */}
-      <div className="panel" style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {myHand.length === 0 && <div className="muted">No cards</div>}
-        {myHand.map((c) => (
+      <div className="panel hand-panel" style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {sortedHand.length === 0 && <div className="muted">No cards</div>}
+        {sortedHand.map((c) => (
           <CardView
             key={c.id}
             card={c}
@@ -184,7 +206,8 @@ export function Table() {
                   <th style={{ textAlign: 'left' }}>Player</th>
                   <th>Tricks</th>
                   <th>Bottle?</th>
-                  <th>Score</th>
+                  <th>Hand</th>
+                  <th>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -198,22 +221,56 @@ export function Table() {
                         {r.heldBottle ? `-${r.impTrickCoins} (bottle)` : '—'}
                       </td>
                       <td style={{ textAlign: 'center', fontWeight: 700 }}>{r.score}</td>
+                      <td style={{ textAlign: 'center', color: 'var(--accent-2)' }}>
+                        {totals?.[r.playerId] ?? r.score}
+                      </td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
-            <button onClick={() => socket?.emit('game:continue')} style={{ width: '100%' }}>
+            {totals && <div className="muted" style={{ fontSize: '0.8rem' }}>Totals carry across hands — keep playing to your agreed target.</div>}
+            <button
+              onClick={() => {
+                dismissScored()
+                socket?.emit('game:continue')
+              }}
+              style={{ width: '100%' }}
+            >
               Continue
             </button>
             <button
               className="secondary"
-              onClick={() => socket?.emit('game:restart')}
+              onClick={() => {
+                dismissScored()
+                socket?.emit('game:restart')
+              }}
               style={{ width: '100%', marginTop: 8 }}
             >
               Play again
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Idle after hand-over: summary dismissed — totals stay up, play again is
+          reachable without a reload (the overlay is the only other path). */}
+      {g.phase === 'hand_over' && !scored && (
+        <div className="panel" style={{ textAlign: 'center' }}>
+          <h2>Hand complete</h2>
+          {totals && (
+            <div style={{ margin: '10px 0' }}>
+              {game.players.map((p) => (
+                <div key={p.id} style={{ margin: '2px 0' }}>
+                  {p.name}:{' '}
+                  <strong style={{ color: 'var(--accent-2)' }}>{totals[p.id] ?? 0}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+          <button onClick={() => socket?.emit('game:restart')} style={{ width: '100%' }}>
+            Play again
+          </button>
         </div>
       )}
     </div>

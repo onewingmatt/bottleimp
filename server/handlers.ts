@@ -167,7 +167,16 @@ function afterMutation(room: Room): void {
 
   if (g.phase === 'hand_over') {
     const scored = scoreHand(g)
-    g.finalResults = scored
+    // Guard against double-scoring: afterMutation can re-run on leave/disconnect
+    // while the summary is up. finalResults is set only on the first pass.
+    if (!g.finalResults) {
+      g.finalResults = scored
+      // Add this hand's scores to the running room totals (persisted with the
+      // room, so totals survive server restarts and reconnects).
+      for (const line of scored) {
+        room.scores[line.playerId] = (room.scores[line.playerId] ?? 0) + line.score
+      }
+    }
     // broadcast final results to everyone
     for (const p of room.players) {
       if (p.socketId) {
@@ -176,6 +185,7 @@ function afterMutation(room: Room): void {
           socket.emit('game:scored', {
             game: serializeGame(g, p.id),
             results: scored,
+            totals: { ...room.scores },
           })
         }
       }
@@ -252,7 +262,11 @@ export function registerHandlers(server: Server): void {
         socket.emit('game:board', { game: serializeGame(g, player.id) })
         if (g.phase === 'hand_over' || g.phase === 'game_over') {
           const scored = scoreHand(g)
-          socket.emit('game:scored', { game: serializeGame(g, player.id), results: scored })
+          socket.emit('game:scored', {
+            game: serializeGame(g, player.id),
+            results: scored,
+            totals: { ...room.scores },
+          })
         }
       }
       broadcastRoom(room, 'room:state', roomPublic(room), socket.id)
@@ -349,6 +363,7 @@ export function registerHandlers(server: Server): void {
         room.players.map((p) => ({ id: p.id, name: p.name })),
         Math.random,
       )
+      room.scores = {}
       for (let i = 0; i < room.players.length; i++) {
         const rp = room.players[i]
         const gp = room.game.players[i]

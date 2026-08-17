@@ -26,6 +26,8 @@ export interface Room {
   pausedForSummary?: boolean
   // Per-room bot action delay in ms. Optional; defaults to BOT_DELAY_MS.
   botDelayMs?: number
+  // Running total score per player across hands (reset on game:start).
+  scores: Record<string, number>
 }
 
 const rooms = new Map<string, Room>()
@@ -70,6 +72,7 @@ export function createRoom(hostName: string): { room: Room; host: RoomPlayer } {
     updatedAt: Date.now(),
     pausedForSummary: false,
     botDelayMs: BOT_DELAY_MS,
+    scores: {},
   }
   rooms.set(code, room)
   saveRoom(room)
@@ -159,6 +162,8 @@ export function restorePersistedRooms(): void {
   for (const room of loadRooms()) {
     // Only restore rooms that look alive (recent activity)
     if (Date.now() - room.updatedAt < ROOM_TTL_MS) {
+      // Old persisted rooms predate cumulative scores — default them.
+      room.scores = room.scores ?? {}
       // Never restore a mid-summary pause — nobody is holding the overlay
       // after a server restart; the game should resume instead of stalling.
       room.pausedForSummary = false

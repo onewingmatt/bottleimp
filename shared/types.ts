@@ -63,6 +63,7 @@ export interface GameState {
   bottleHolderId: string | null // null = nobody owns the bottle yet
   impTrick: Card[] // face-down discards under the 19 (hidden until scoring)
   previousPrice: number // the card that was the previous price (for transfer)
+  firstLeaderId: string // player left of the dealer — leads discards AND the first trick
   history: EngineEvent[]
   handNumber: number
   // pending exchange: cards passed to each player (playerId -> [leftCard, rightCard])

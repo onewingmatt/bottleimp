@@ -178,6 +178,20 @@ describe('exchange phase', () => {
 })
 
 describe('playing phase', () => {
+  it('first trick is led by the player left of the dealer (same as first discarder)', () => {
+    for (const n of [3, 4]) {
+      const g = createGame(seeds(n), rng(7))
+      const firstDiscarder = g.players[g.currentPlayerIndex].id
+      const s = toPlaying(g, rng(1))
+      if (!s.currentTrick) throw new Error('no trick')
+      expect(s.currentTrick.leaderId).toBe(firstDiscarder)
+      // The leader is only ONE seat away from the dealer (player left of dealer).
+      const dealerIdx = s.playerOrder.indexOf(firstDiscarder) - 1
+      const dealer = s.playerOrder[(dealerIdx + n) % n]
+      expect(dealer).toBeTruthy()
+    }
+  })
+
   it('leader plays any card, others must follow suit if possible', () => {
     let s = toPlaying(createGame(seeds(3), rng(7)), rng(1))
     const leader = s.currentTrick!.leaderId

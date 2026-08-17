@@ -106,6 +106,7 @@ export function createGame(seeds: PlayerSeed[], rng: RNG): GameState {
     bottleHolderId: null,
     impTrick: [],
     previousPrice: START_PRICE,
+    firstLeaderId: players[leaderIndex].id,
     history: [{ type: 'hand_start', dealerId, ts: Date.now() }],
     handNumber: 1,
     incoming: {},
@@ -217,19 +218,22 @@ export function passCards(
 }
 
 function startPlayingPhase(s: GameState): ActionResult {
-  // First leader is the player left of the dealer, already stored in
-  // currentPlayerIndex from setup; reuse it for the first trick.
-  const leaderIndex = s.currentPlayerIndex
+  // The first trick leader is the player left of the dealer — the same player
+  // who led the discard phase. The discard loop advances currentPlayerIndex
+  // through every player, so the leader must be looked up explicitly rather
+  // than reused from currentPlayerIndex.
+  const leaderIdx = s.playerOrder.indexOf(s.firstLeaderId)
+  s.currentPlayerIndex = leaderIdx
   s.phase = 'playing'
   const price = s.bottlePrice
   s.currentTrick = {
-    leaderId: s.playerOrder[leaderIndex],
+    leaderId: s.firstLeaderId,
     plays: [],
     price,
   }
   s.history.push({
     type: 'trick_start',
-    leaderId: s.playerOrder[leaderIndex],
+    leaderId: s.firstLeaderId,
     price,
     ts: Date.now(),
   })
