@@ -10,12 +10,14 @@ export interface UIState {
   game: ClientGame | null
   scored: ScoreResult[] | null
   totals: Record<string, number> | null
+  matchWinnerId: string | null
+  matchTarget: number
   gameOver: boolean
   error: string | null
   setConnected: (c: boolean) => void
   setRoom: (room: RoomState) => void
   setGame: (game: ClientGame) => void
-  setScored: (results: ScoreResult[], totals?: Record<string, number>) => void
+  setScored: (results: ScoreResult[], totals?: Record<string, number>, matchWinnerId?: string | null, matchTarget?: number) => void
   setGameOver: (v: boolean) => void
   dismissScored: () => void
   setError: (msg: string | null) => void
@@ -30,6 +32,8 @@ export const useStore = create<UIState>((set) => ({
   game: null,
   scored: null,
   totals: null,
+  matchWinnerId: null,
+  matchTarget: 100,
   gameOver: false,
   error: null,
 
@@ -39,6 +43,8 @@ export const useStore = create<UIState>((set) => ({
       room,
       yourId: room.yourId ?? s.yourId,
       reconnectToken: room.reconnectToken ?? s.reconnectToken,
+      matchTarget: room.matchTarget ?? s.matchTarget,
+      matchWinnerId: room.matchWinnerId ?? s.matchWinnerId,
     })),
   setGame: (game) =>
     set((s) => ({
@@ -48,7 +54,13 @@ export const useStore = create<UIState>((set) => ({
       // the phase moves on (continue/restart) so it can't cover a new hand.
       scored: game.phase === 'hand_over' || game.phase === 'game_over' ? s.scored : null,
     })),
-  setScored: (results, totals) => set({ scored: results, totals: totals ?? null }),
+  setScored: (results, totals, matchWinnerId, matchTarget) =>
+    set({
+      scored: results,
+      totals: totals ?? null,
+      matchWinnerId: matchWinnerId ?? null,
+      matchTarget: matchTarget ?? 100,
+    }),
   setGameOver: (v) => set({ gameOver: v }),
   dismissScored: () => set({ scored: null }), // totals survive — they're the running session record
   setError: (msg) => set({ error: msg }),
@@ -60,6 +72,8 @@ export const useStore = create<UIState>((set) => ({
       game: null,
       scored: null,
       totals: null,
+      matchWinnerId: null,
+      matchTarget: 100,
       gameOver: false,
       error: null,
     }),

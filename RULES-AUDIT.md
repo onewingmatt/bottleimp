@@ -40,8 +40,13 @@ This project is a fan implementation. The game rules are copyright Reiner Knizia
 ## Scoring (end of hand)
 - Each player scores the **sum of coins on cards in their won tricks**.
 - The player holding the Bottle Imp at hand end instead scores the **negative** of the sum of coins in the Imp's Trick (the face-down discards), and **ignores their own won-trick coins**.
-- Match: play to an agreed target or fixed hands. This scaffold defaults to a **single hand** with a play-again option (target/多-hand scoring is a future option).
+- Match: play to an agreed target (host sets it in the lobby, default 100).
+  The first player whose running total reaches the target wins; a new match
+  resets the totals. Implemented in `server/handlers.ts` (room.scores +
+  matchTarget/matchWinnerId); the engine itself stays single-hand.
 
 ## Bot behavior
 - Bots must always play **legal** cards (follow suit if possible).
-- Difficulty tiers are heuristics (easy random, medium value-aware, hard deny/dump-aware); tuned heuristics may evolve.
+- Difficulty tiers are heuristics (easy random, medium follow-suit low, hard
+  coin-aware value model, expert Monte Carlo rollout over hidden cards); the
+  ordering is verified by a head-to-head simulation in `test/bot.test.ts`.

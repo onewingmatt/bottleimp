@@ -33,6 +33,25 @@ export function Lobby() {
           <span className="muted">Share this code with friends:</span>{' '}
           <strong style={{ fontSize: '1.4rem', letterSpacing: 2 }}>{room.code}</strong>
         </div>
+        {!room.inGame && isHost && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span className="muted">Match target:</span>
+            <input
+              type="number"
+              min={10}
+              max={1000}
+              value={room.matchTarget}
+              onChange={(e) => socket?.emit('game:setTarget', { target: Number(e.target.value) })}
+              style={{ ...inputStyle, width: 90, padding: '6px 8px' }}
+            />
+            <span className="muted">points</span>
+          </div>
+        )}
+        {room.inGame && (
+          <div className="muted" style={{ marginBottom: 12 }}>
+            Match target: {room.matchTarget} points
+          </div>
+        )}
         <div>
           <h3 className="muted" style={{ marginBottom: 6 }}>
             Players ({room.players.length}/4)

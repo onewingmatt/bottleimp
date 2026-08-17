@@ -41,6 +41,8 @@ export function Table() {
   const yourId = useStore((s) => s.yourId)
   const scored = useStore((s) => s.scored)
   const totals = useStore((s) => s.totals)
+  const matchWinnerId = useStore((s) => s.matchWinnerId)
+  const matchTarget = useStore((s) => s.matchTarget)
   const dismissScored = useStore((s) => s.dismissScored)
   const roomPaused = useStore((s) => s.room?.pausedForReconnect === true)
   // Local (not store) selection for the exchange: exactly two distinct cards.
@@ -98,6 +100,7 @@ export function Table() {
   }
 
   const bottleHolder = game.players.find((p) => p.id === game.bottleHolderId)
+  const matchWinner = matchWinnerId ? game.players.find((p) => p.id === matchWinnerId) : null
 
   return (
     <div style={{ width: '100%', maxWidth: 900 }}>
@@ -202,11 +205,25 @@ export function Table() {
         </div>
       )}
 
-      {/* Hand-over / game over overlay */}
+      {/* Hand-over / match-over overlay */}
       {scored && (
         <div className="overlay">
           <div className="panel">
-            <h2>Hand over</h2>
+            {g.phase === 'game_over' ? (
+              <>
+                <h2>Match over</h2>
+                {matchWinner && (
+                  <div style={{ textAlign: 'center', margin: '8px 0' }}>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-2)' }}>
+                      🏆 {matchWinner.name} wins the match!
+                    </div>
+                    <div className="muted">First to {matchTarget} points</div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <h2>Hand over</h2>
+            )}
             <table style={{ width: '100%', borderCollapse: 'collapse', margin: '12px 0' }}>
               <thead>
                 <tr>
@@ -214,48 +231,66 @@ export function Table() {
                   <th>Tricks</th>
                   <th>Bottle?</th>
                   <th>Hand</th>
-                  <th>Total</th>
+                  <th>Total / {matchTarget}</th>
                 </tr>
               </thead>
               <tbody>
                 {scored.map((r) => {
                   const p = game.players.find((x) => x.id === r.playerId)
+                  const total = totals?.[r.playerId] ?? r.score
+                  const leader = matchWinnerId === r.playerId
                   return (
-                    <tr key={r.playerId}>
-                      <td>{p?.name}</td>
+                    <tr key={r.playerId} style={leader ? { background: 'rgba(232, 185, 62, 0.08)' } : undefined}>
+                      <td>
+                        {p?.name} {leader && '🏆'}
+                      </td>
                       <td style={{ textAlign: 'center' }}>{r.trickCoins}</td>
                       <td style={{ textAlign: 'center' }}>
                         {r.heldBottle ? `-${r.impTrickCoins} (bottle)` : '—'}
                       </td>
                       <td style={{ textAlign: 'center', fontWeight: 700 }}>{r.score}</td>
-                      <td style={{ textAlign: 'center', color: 'var(--accent-2)' }}>
-                        {totals?.[r.playerId] ?? r.score}
-                      </td>
+                      <td style={{ textAlign: 'center', color: 'var(--accent-2)' }}>{total}</td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
-            {totals && <div className="muted" style={{ fontSize: '0.8rem' }}>Totals carry across hands — keep playing to your agreed target.</div>}
-            <button
-              onClick={() => {
-                dismissScored()
-                socket?.emit('game:continue')
-              }}
-              style={{ width: '100%' }}
-            >
-              Continue
-            </button>
-            <button
-              className="secondary"
-              onClick={() => {
-                dismissScored()
-                socket?.emit('game:restart')
-              }}
-              style={{ width: '100%', marginTop: 8 }}
-            >
-              Play again
-            </button>
+            {g.phase === 'game_over' ? (
+              <button
+                onClick={() => {
+                  dismissScored()
+                  socket?.emit('game:restart')
+                }}
+                style={{ width: '100%' }}
+              >
+                New match
+              </button>
+            ) : (
+              <>
+                <div className="muted" style={{ fontSize: '0.8rem' }}>
+                  First to {matchTarget} — totals carry across hands.
+                </div>
+                <button
+                  onClick={() => {
+                    dismissScored()
+                    socket?.emit('game:continue')
+                  }}
+                  style={{ width: '100%' }}
+                >
+                  Continue
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    dismissScored()
+                    socket?.emit('game:restart')
+                  }}
+                  style={{ width: '100%', marginTop: 8 }}
+                >
+                  Play next hand
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -271,12 +306,30 @@ export function Table() {
                 <div key={p.id} style={{ margin: '2px 0' }}>
                   {p.name}:{' '}
                   <strong style={{ color: 'var(--accent-2)' }}>{totals[p.id] ?? 0}</strong>
+                  <span className="muted"> / {matchTarget}</span>
                 </div>
               ))}
             </div>
           )}
           <button onClick={() => socket?.emit('game:restart')} style={{ width: '100%' }}>
-            Play again
+            Play next hand
+          </button>
+        </div>
+      )}
+
+      {/* Idle after match-over: summary dismissed — the only way forward is a
+          fresh match. */}
+      {g.phase === 'game_over' && !scored && (
+        <div className="panel" style={{ textAlign: 'center' }}>
+          <h2>Match complete</h2>
+          {matchWinner && (
+            <div style={{ margin: '10px 0', fontSize: '1.1rem', fontWeight: 700 }}>
+              🏆 {matchWinner.name} won with {totals?.[matchWinner.id] ?? 0} points
+              <span className="muted"> (first to {matchTarget})</span>
+            </div>
+          )}
+          <button onClick={() => socket?.emit('game:restart')} style={{ width: '100%' }}>
+            New match
           </button>
         </div>
       )}

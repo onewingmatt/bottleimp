@@ -28,6 +28,10 @@ export interface Room {
   botDelayMs?: number
   // Running total score per player across hands (reset on game:start).
   scores: Record<string, number>
+  // Match structure: play hands until someone crosses matchTarget. Reset on
+  // a new match (game:restart after game_over).
+  matchTarget: number
+  matchWinnerId: string | null
   // Hard freeze: the only real player disconnected mid-game. No bot takeover,
   // no bot actions — the game holds exactly here until they reconnect.
   pausedForReconnect?: boolean
@@ -76,6 +80,8 @@ export function createRoom(hostName: string): { room: Room; host: RoomPlayer } {
     pausedForSummary: false,
     botDelayMs: BOT_DELAY_MS,
     scores: {},
+    matchTarget: 100,
+    matchWinnerId: null,
   }
   rooms.set(code, room)
   saveRoom(room)
@@ -167,6 +173,8 @@ export function restorePersistedRooms(): void {
     if (Date.now() - room.updatedAt < ROOM_TTL_MS) {
       // Old persisted rooms predate cumulative scores — default them.
       room.scores = room.scores ?? {}
+      room.matchTarget = room.matchTarget ?? 100
+      room.matchWinnerId = room.matchWinnerId ?? null
       // Never restore a mid-summary pause — nobody is holding the overlay
       // after a server restart; the game should resume instead of stalling.
       room.pausedForSummary = false

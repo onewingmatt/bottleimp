@@ -48,6 +48,8 @@ export interface RoomState {
   hostId: string
   inGame: boolean
   pausedForReconnect?: boolean
+  matchTarget: number
+  matchWinnerId: string | null
   players: RoomPlayer[]
   reconnectToken?: string
   yourId?: string

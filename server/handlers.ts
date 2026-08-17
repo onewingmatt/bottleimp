@@ -53,6 +53,8 @@ function roomPublic(room: Room) {
     hostId: room.hostId,
     inGame: !!room.game,
     pausedForReconnect: !!room.pausedForReconnect,
+    matchTarget: room.matchTarget,
+    matchWinnerId: room.matchWinnerId,
     players: room.players.map((p) => ({
       id: p.id,
       name: p.name,
@@ -191,6 +193,17 @@ function afterMutation(room: Room): void {
       for (const line of scored) {
         room.scores[line.playerId] = (room.scores[line.playerId] ?? 0) + line.score
       }
+      // Match check: first to cross the target wins the match.
+      const crossed = scored.filter((s) => (room.scores[s.playerId] ?? 0) >= room.matchTarget)
+      if (crossed.length > 0) {
+        g.phase = 'game_over'
+        // Highest total among the crossed players; tie → first in seat order.
+        room.matchWinnerId = [...crossed].sort(
+          (a, b) => room.scores[b.playerId] - room.scores[a.playerId],
+        )[0].playerId
+      } else {
+        room.matchWinnerId = null
+      }
     }
     // broadcast final results to everyone
     for (const p of room.players) {
@@ -201,6 +214,8 @@ function afterMutation(room: Room): void {
             game: serializeGame(g, p.id),
             results: scored,
             totals: { ...room.scores },
+            matchWinnerId: room.matchWinnerId,
+            matchTarget: room.matchTarget,
           })
         }
       }
@@ -282,6 +297,8 @@ export function registerHandlers(server: Server): void {
             game: serializeGame(g, player.id),
             results: scored,
             totals: { ...room.scores },
+            matchWinnerId: room.matchWinnerId,
+            matchTarget: room.matchTarget,
           })
         }
       }
@@ -365,6 +382,25 @@ export function registerHandlers(server: Server): void {
     // ------------------------------------------------------------------
     // Game
     // ------------------------------------------------------------------
+    socket.on('game:setTarget', ({ target } = {}) => {
+      const room = getRoomBySocket(socket.id)
+      if (!room) return
+      const player = room.players.find((p) => p.socketId === socket.id)
+      if (!player || player.id !== room.hostId) return
+      if (room.game) {
+        socket.emit('error', { message: 'Target can only be set before the match starts' })
+        return
+      }
+      const n = Math.round(Number(target))
+      if (!Number.isFinite(n) || n < 10 || n > 1000) {
+        socket.emit('error', { message: 'Target must be between 10 and 1000' })
+        return
+      }
+      room.matchTarget = n
+      save(room)
+      broadcastRoom(room, 'room:state', roomPublic(room))
+    })
+
     socket.on('game:start', () => {
       const room = getRoomBySocket(socket.id)
       if (!room) return
@@ -447,6 +483,12 @@ export function registerHandlers(server: Server): void {
       const room = getRoomBySocket(socket.id)
       if (!room) return
       if (!room.game || (room.game.phase !== 'hand_over' && room.game.phase !== 'game_over')) return
+      // If the match is over, this starts a NEW match: reset totals and the
+      // winner. Otherwise it's just the next hand in the running match.
+      if (room.game.phase === 'game_over') {
+        room.scores = {}
+        room.matchWinnerId = null
+      }
       room.game = createGame(
         room.players.map((p) => ({ id: p.id, name: p.name })),
         Math.random,
