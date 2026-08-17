@@ -31,8 +31,8 @@ export function clearBotTimer(code: string): void {
 // If it is a bot's turn right now, schedule its action.
 export function scheduleBot(room: Room): void {
   if (!room || !room.game) return
-  // Hand-over summary is up — hold bot play until a human dismisses it.
-  if (room.pausedForSummary) return
+  // Summary overlay OR the last-human-away freeze: hold bot play.
+  if (room.pausedForSummary || room.pausedForReconnect) return
   const g = room.game
   if (g.phase === 'discard') {
     const actor = g.players[g.currentPlayerIndex]

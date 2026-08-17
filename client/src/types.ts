@@ -47,6 +47,7 @@ export interface RoomState {
   code: string
   hostId: string
   inGame: boolean
+  pausedForReconnect?: boolean
   players: RoomPlayer[]
   reconnectToken?: string
   yourId?: string

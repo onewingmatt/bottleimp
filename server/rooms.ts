@@ -28,6 +28,9 @@ export interface Room {
   botDelayMs?: number
   // Running total score per player across hands (reset on game:start).
   scores: Record<string, number>
+  // Hard freeze: the only real player disconnected mid-game. No bot takeover,
+  // no bot actions — the game holds exactly here until they reconnect.
+  pausedForReconnect?: boolean
 }
 
 const rooms = new Map<string, Room>()

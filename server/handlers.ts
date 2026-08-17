@@ -52,6 +52,7 @@ function roomPublic(room: Room) {
     code: room.code,
     hostId: room.hostId,
     inGame: !!room.game,
+    pausedForReconnect: !!room.pausedForReconnect,
     players: room.players.map((p) => ({
       id: p.id,
       name: p.name,
@@ -67,11 +68,25 @@ function hasConnectedHuman(room: Room): boolean {
   return room.players.some((p) => !p.isBot && p.socketId != null)
 }
 
+// When the ONLY real player is gone, freeze the room instead of bot-taking
+// over their seat: a game playing itself out with zero human agency is not a
+// game. Other bots and seats keep running only while a human remains.
+function freezeIfLastHumanGone(room: Room): void {
+  const humans = room.players.filter((p) => !p.isBot)
+  const connectedHumans = humans.filter((p) => p.socketId != null)
+  if (humans.length === 1 && connectedHumans.length === 0) {
+    room.pausedForReconnect = true
+    clearBotTimer(room.code)
+  }
+}
+
 // Advance the game past any player whose turn it currently is but who has
 // disconnected. The engine refuses actions from disconnected players, so
 // without this a mid-game disconnect on your turn would stall the room.
 // Auto-plays them legally using the bot decision function (bot takeover).
 function advancePastDisconnected(room: Room): boolean {
+  // Hard freeze: no bot takeover of the last human's seat.
+  if (room.pausedForReconnect) return false
   let moved = false
   let guard = 0
   while (guard++ < 64) {
@@ -251,6 +266,7 @@ export function registerHandlers(server: Server): void {
       player.disconnected = false
       syncGameDisconnected(room, player.id, false)
       room.pausedForSummary = false
+      room.pausedForReconnect = false
       save(room)
       socket.emit('room:state', {
         ...roomPublic(room),
@@ -292,6 +308,7 @@ export function registerHandlers(server: Server): void {
         player.socketId = null
         player.disconnected = true
         syncGameDisconnected(room, player.id, true)
+        freezeIfLastHumanGone(room)
         save(room)
         broadcastRoom(room, 'room:state', roomPublic(room))
         socket.emit('room:left')
@@ -478,6 +495,7 @@ export function registerHandlers(server: Server): void {
         player.socketId = null
         player.disconnected = true
         syncGameDisconnected(room, player.id, true)
+        freezeIfLastHumanGone(room)
         save(room)
         broadcastRoom(room, 'room:state', roomPublic(room))
         if (!hasConnectedHuman(room)) room.pausedForSummary = false

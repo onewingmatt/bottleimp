@@ -42,6 +42,7 @@ export function Table() {
   const scored = useStore((s) => s.scored)
   const totals = useStore((s) => s.totals)
   const dismissScored = useStore((s) => s.dismissScored)
+  const roomPaused = useStore((s) => s.room?.pausedForReconnect === true)
   // Local (not store) selection for the exchange: exactly two distinct cards.
   const [exchangeSel, setExchangeSel] = useState<string[]>([])
 
@@ -101,6 +102,12 @@ export function Table() {
   return (
     <div style={{ width: '100%', maxWidth: 900 }}>
       {/* Opponents */}
+      {roomPaused && (
+        <div className="error-banner" style={{ marginBottom: 10, textAlign: 'center' }}>
+          Game paused — your seat is held. Reconnect (refresh) to resume; no one
+          has played your cards.
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginBottom: 10 }}>
         {game.players.filter((p) => p.id !== yourId).map((p) => (
           <div key={p.id} className="panel" style={{ minWidth: 140, margin: 0 }}>
