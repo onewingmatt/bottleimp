@@ -219,7 +219,10 @@ describe('playing phase', () => {
     const n = s.players.length
     for (let i = 0; i < n; i++) {
       const actor = currentTrickActor(s)!
-      const highest = [...actor.hand].sort((a, b) => b.number - a.number)[0]
+      const led = s.currentTrick!.plays[0]?.card
+      const inSuit = led ? actor.hand.filter((c) => c.suit === led.suit) : []
+      const pool = inSuit.length > 0 ? inSuit : actor.hand
+      const highest = [...pool].sort((a, b) => b.number - a.number)[0]
       s = unwrap(playCard(s, actor.id, highest.id))
     }
     const lastTrickEnd = s.history.findLast((h) => h.type === 'trick_end')!
@@ -236,10 +239,13 @@ describe('playing phase', () => {
     s = { ...s, bottlePrice: 30 }
     if (s.currentTrick) s.currentTrick = { ...s.currentTrick, price: 30 }
     const n = s.players.length
-    // Everyone plays their lowest card (trumps).
+    // Everyone plays their lowest card in the led suit (trumps).
     for (let i = 0; i < n; i++) {
       const actor = currentTrickActor(s)!
-      const lowest = [...actor.hand].sort((a, b) => a.number - b.number)[0]
+      const led = s.currentTrick!.plays[0]?.card
+      const inSuit = led ? actor.hand.filter((c) => c.suit === led.suit) : []
+      const pool = inSuit.length > 0 ? inSuit : actor.hand
+      const lowest = [...pool].sort((a, b) => a.number - b.number)[0]
       s = unwrap(playCard(s, actor.id, lowest.id))
     }
     const last = s.history.findLast((h) => h.type === 'trick_end')!
@@ -259,11 +265,14 @@ describe('playing phase', () => {
     const leaderHand = s.players.find((p) => p.id === leader)!.hand
     const lowest = [...leaderHand].sort((a, b) => a.number - b.number)[0]
     s = unwrap(playCard(s, leader, lowest.id))
-    // Everyone else plays their lowest too (all trumps if < 30).
+    // Everyone else plays their lowest in the led suit (all trumps if < 30).
     const n = s.players.length
     for (let i = 1; i < n; i++) {
       const actor = currentTrickActor(s)!
-      const lowest = [...actor.hand].sort((a, b) => a.number - b.number)[0]
+      const led = s.currentTrick!.plays[0]?.card
+      const inSuit = led ? actor.hand.filter((c) => c.suit === led.suit) : []
+      const pool = inSuit.length > 0 ? inSuit : actor.hand
+      const lowest = [...pool].sort((a, b) => a.number - b.number)[0]
       s = unwrap(playCard(s, actor.id, lowest.id))
     }
     // The winner played a trump → bottle transferred and price lowered.

@@ -8,11 +8,16 @@ This project is a fan implementation. The game rules are copyright Reiner Knizia
 - BGG forum threads for the 1995 edition
 
 ## Deck
-- **36 suit cards**, numbered **1–37**, in **three colors** (red mostly high, blue middle, yellow mostly low).
-- Each card has a **coin value 1–6** for scoring.
+- **36 suit cards**, numbered **1–37**, in **three colors** (red, blue, green), each color holding exactly **12 cards**.
+- Suit layout is **interleaved**, not contiguous blocks. Verified against the publisher's player aid (Matagot/Grail 2023 edition, which keeps the classic 1–37 distribution):
+  - red:   1, 2, 4, 5, 7, 9, 12, 15, 18, 22, 25, 28
+  - blue:  3, 6, 8, 10, 13, 17, 20, 23, 27, 30, 32, 35
+  - green: 11, 14, 16, 21, 24, 26, 29, 31, 33, 34, 36, 37
+  Locked by `test/deck.test.ts`.
+- Each card has a **coin value 1–6** for scoring (small bottle icons on the card face).
 - **1 neutral card "19"** — the start value / current price of the Bottle. It is not a playable suit card; it sits face-up and is never played to tricks.
 - 37 physical cards total (36 + 19 + Bottle token + reference cards).
-- Coin-value assignment: the exact per-card coin distribution is not fully specified in the public rules summary. We assign coins 1–6 per the commonly used pattern, distributed so each color spans a range of the 1–37 numbering. **Flagged**: exact coin layout varies by edition; RULES-AUDIT picks a consistent assignment (documented in `shared/constants.ts`).
+- Coin-value assignment: the exact per-card coin distribution is NOT printed on any public reference we found (player aid shows suit colors only, not coin values). We assign coins 1–6 per a consistent cycling pattern in `shared/constants.ts` (COIN_BY_NUMBER). **Flagged**: exact coin layout may vary by edition; this affects only scoring totals, not legality of play.
 
 ## Deal
 - 3 players: 12 cards each; 4 players: 9 each. All 36 suit cards are dealt.

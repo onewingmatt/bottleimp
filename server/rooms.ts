@@ -208,6 +208,16 @@ export function roomCount(): number {
   return rooms.size
 }
 
+export function connectedPlayerCount(): number {
+  let n = 0
+  for (const room of rooms.values()) {
+    for (const p of room.players) {
+      if (!p.isBot && p.socketId != null) n += 1
+    }
+  }
+  return n
+}
+
 export function maxRooms(): number {
   return MAX_ROOMS
 }

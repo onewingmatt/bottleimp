@@ -125,8 +125,8 @@ describe('bot decision quality', () => {
           ? {
               ...p,
               hand: [
-                { id: 'x-2', suit: 'yellow', number: 2, coins: 6 },
-                { id: 'x-3', suit: 'yellow', number: 3, coins: 1 },
+                { id: 'x-2', suit: 'green', number: 2, coins: 6 },
+                { id: 'x-3', suit: 'green', number: 3, coins: 1 },
                 { id: 'x-20', suit: 'blue', number: 20, coins: 4 },
                 { id: 'x-30', suit: 'red', number: 30, coins: 5 },
               ],
@@ -148,8 +148,8 @@ describe('bot decision quality', () => {
           ? {
               ...p,
               hand: [
-                { id: 'y-4', suit: 'yellow', number: 4, coins: 1 },
-                { id: 'y-5', suit: 'yellow', number: 5, coins: 2 },
+                { id: 'y-4', suit: 'green', number: 4, coins: 1 },
+                { id: 'y-5', suit: 'green', number: 5, coins: 2 },
                 { id: 'r-30', suit: 'red', number: 30, coins: 5 },
                 { id: 'r-31', suit: 'red', number: 31, coins: 4 },
               ],
@@ -175,7 +175,7 @@ describe('bot decision quality', () => {
       phase: 'playing',
       currentTrick: {
         leaderId: actorId,
-        plays: [{ playerId: 'p1', card: { id: 'y-5', suit: 'yellow', number: 5, coins: 1 } }],
+        plays: [{ playerId: 'p1', card: { id: 'y-5', suit: 'green', number: 5, coins: 1 } }],
         price: 19,
       },
       players: g.players.map((p) =>

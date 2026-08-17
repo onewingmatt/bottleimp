@@ -19,6 +19,7 @@ import {
 } from './rooms'
 import { deleteRoom } from './db'
 import { clearBotTimer, BOT_DELAY_MS, FAST_BOT_DELAY_MS, scheduleBot, setOnAfterMutation } from './botScheduler'
+import { isJoinRateLimited, maybePruneRateLimits } from './rateLimit'
 
 const MIN_PLAYERS = Number(process.env.MIN_PLAYERS ?? 3)
 const MAX_PLAYERS = 4
@@ -274,6 +275,14 @@ export function registerHandlers(server: Server): void {
     })
 
     socket.on('room:join', ({ code, playerName } = {}) => {
+      // Rate limit: per-socket and per-IP. Join is the only unauthenticated
+      // entry that lets a client probe room codes.
+      const ip = (socket.handshake.address ?? '').replace(/^::ffff:/, '')
+      if (isJoinRateLimited(`socket:${socket.id}`) || isJoinRateLimited(`ip:${ip}`)) {
+        socket.emit('error', { message: 'Too many join attempts. Slow down.' })
+        return
+      }
+      maybePruneRateLimits()
       const name = String(playerName ?? '').trim().slice(0, 24) || 'Player'
       const res = joinRoom(String(code ?? ''), name)
       if (!res.ok) {

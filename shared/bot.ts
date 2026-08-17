@@ -107,7 +107,7 @@ export function chooseExchange(
   // pair (voiding a suit is good, but not with our best cards).
   const bottom = ranked.slice(0, 4)
   let bestPair: Card[] | null = null
-  for (const suit of ['red', 'blue', 'yellow'] as const) {
+  for (const suit of ['red', 'blue', 'green'] as const) {
     const pair = bottom.filter((c) => c.suit === suit)
     if (pair.length >= 2) {
       const pairValue = exchangeValue(pair[0]) + exchangeValue(pair[1])
