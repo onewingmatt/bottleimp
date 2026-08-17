@@ -85,6 +85,12 @@ export function Table() {
   const roomPaused = useStore((s) => s.room?.pausedForReconnect === true)
   // Local (not store) selection for the exchange: exactly two distinct cards.
   const [exchangeSel, setExchangeSel] = useState<string[]>([])
+  // Last completed trick(s), for the center strip and bottle-transition callout.
+  // NOTE: must stay ABOVE the `if (!game)` early return — React requires a
+  // stable hook order across renders.
+  const trickLog = useMemo(() => buildTrickLog(game?.history ?? []), [game?.history])
+  const lastTrick = trickLog[trickLog.length - 1]
+  const lastBottle = [...trickLog].reverse().find((t) => t.bottleChanged)
 
   if (!game) return <div className="panel">Waiting for game…</div>
   const g = game
@@ -139,11 +145,6 @@ export function Table() {
 
   const bottleHolder = game.players.find((p) => p.id === game.bottleHolderId)
   const matchWinner = matchWinnerId ? game.players.find((p) => p.id === matchWinnerId) : null
-
-  // Last completed trick(s), for the center strip and bottle-transition callout.
-  const trickLog = useMemo(() => buildTrickLog(game.history ?? []), [game.history])
-  const lastTrick = trickLog[trickLog.length - 1]
-  const lastBottle = [...trickLog].reverse().find((t) => t.bottleChanged)
 
   return (
     <div style={{ width: '100%', maxWidth: 900 }}>
