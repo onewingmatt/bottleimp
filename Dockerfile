@@ -24,7 +24,11 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/shared ./shared
 COPY --from=build /app/server ./server
 COPY --from=build /app/client/dist ./client/dist
+# Empty data dir (persisted via compose volume)
+RUN mkdir -p /app/data
 
 EXPOSE 3001
 
-CMD ["node", "--experimental-specifier-resolution=node", "server/index.ts"]
+# tsx runs the TypeScript server directly (plain `node` cannot load .ts,
+# and tsc emits nothing under this project's noEmit tsconfig).
+CMD ["npx", "tsx", "server/index.ts"]

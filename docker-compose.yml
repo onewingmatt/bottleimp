@@ -2,7 +2,7 @@ services:
   bottleimp:
     build: .
     ports:
-      - "3001:3001"
+      - "3005:3001"
     environment:
       - PORT=3001
       - DB_PATH=/app/data/bottleimp.db
