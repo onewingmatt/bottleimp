@@ -44,7 +44,7 @@ async function actorOf(board) {
 }
 
 function dbGame(code) {
-  const db = new Database('data/bottleimp.db', { readonly: true })
+  const db = new Database(process.env.DB_PATH ?? 'data/bottleimp.db', { readonly: true })
   const row = db.prepare('SELECT data FROM rooms WHERE code = ?').get(code)
   db.close()
   return row ? JSON.parse(row.data) : null

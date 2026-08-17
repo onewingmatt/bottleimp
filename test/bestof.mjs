@@ -153,7 +153,7 @@ async function main() {
   console.log('totals:', JSON.stringify(totals), '-> winner', winnerId, 'at', totals[winnerId])
 
   // Persisted state: winner + handsPlayed survive.
-  const db = new Database('data/bottleimp.db', { readonly: true })
+  const db = new Database(process.env.DB_PATH ?? 'data/bottleimp.db', { readonly: true })
   const row = db.prepare('SELECT data FROM rooms WHERE code = ?').get(code)
   db.close()
   const persisted = JSON.parse(row.data)
@@ -163,7 +163,7 @@ async function main() {
   // New match resets handsPlayed + totals.
   host.s.emit('game:restart')
   await waitPhase(host, 'discard', 8000)
-  const db2 = new Database('data/bottleimp.db', { readonly: true })
+  const db2 = new Database(process.env.DB_PATH ?? 'data/bottleimp.db', { readonly: true })
   const row2 = db2.prepare('SELECT data FROM rooms WHERE code = ?').get(code)
   db2.close()
   const p2 = JSON.parse(row2.data)
