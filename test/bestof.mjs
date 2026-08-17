@@ -1,8 +1,8 @@
-// Match test — target-score sessions through the socket layer.
-// - set a low target (10) so one hand almost surely crosses it
-// - totals accumulate across hands
-// - first player past the target => phase game_over + matchWinnerId
-// - game:restart after game_over starts a NEW match with totals reset
+// Best-of-N match test — hands mode through the socket layer.
+// - set matchMode 'hands', 2 hands
+// - play hand 1 -> hand_over, no winner (match not over)
+// - play hand 2 -> game_over, winner = highest running total
+// - totals accumulate across the two hands
 // Requires the server running on :3001.
 import { io } from 'socket.io-client'
 import Database from 'better-sqlite3'
@@ -14,10 +14,10 @@ function client() {
   const s = io(URL, { transports: ['websocket'] })
   const state = { board: null, room: null, scored: null, scoredMeta: null }
   s.on('game:board', ({ game }) => { state.board = game })
-  s.on('game:scored', ({ game, results, totals, matchWinnerId, matchTarget }) => {
+  s.on('game:scored', ({ game, results, totals, matchWinnerId, matchTarget, matchMode, matchHands, handsPlayed }) => {
     state.board = game
     state.scored = results
-    state.scoredMeta = { totals, matchWinnerId, matchTarget }
+    state.scoredMeta = { totals, matchWinnerId, matchTarget, matchMode, matchHands, handsPlayed }
   })
   s.on('room:state', (room) => { state.room = room })
   s.on('error', ({ message }) => console.log('  [err]', message))
@@ -40,8 +40,6 @@ async function waitPhase(c, phase, timeoutMs = 10000) {
   throw new Error(`timed out waiting for phase ${phase}, current ${c.state.board?.phase}`)
 }
 
-// Drive the human's turns (same logic as smoke.mjs) until hand_over or
-// game_over is reached; returns the final board phase. Passes once per hand.
 async function playUntil(c, hostId, timeoutMs = 90000) {
   const start = Date.now()
   let passed = false
@@ -101,32 +99,26 @@ async function playUntil(c, hostId, timeoutMs = 90000) {
   throw new Error(`did not reach hand_over/game_over, last phase ${c.state.board?.phase}`)
 }
 
-function dbRoom(code) {
-  const db = new Database('data/bottleimp.db', { readonly: true })
-  const row = db.prepare('SELECT data FROM rooms WHERE code = ?').get(code)
-  db.close()
-  return row ? JSON.parse(row.data) : null
-}
-
 async function main() {
   const host = client()
   await once(host.s, 'connect')
-  host.s.emit('room:create', { playerName: 'Match' })
+  host.s.emit('room:create', { playerName: 'BestOf' })
   await sleep(300)
   const code = host.state.room.code
   const hostId = host.state.room.yourId
-  console.log('room', code, 'default target =', host.state.room.matchTarget)
 
-  if (host.state.room.matchTarget !== 100) throw new Error('expected default target 100')
-
-  host.s.emit('game:setMatch', { mode: 'target', target: 10 })
+  if (host.state.room.matchMode !== 'target') throw new Error('expected default mode target')
+  host.s.emit('game:setMatch', { mode: 'hands', hands: 2 })
   await sleep(300)
-  console.log('target after set:', host.state.room.matchTarget)
-  if (host.state.room.matchTarget !== 10) throw new Error('setMatch did not apply target')
+  console.log('mode:', host.state.room.matchMode, 'hands:', host.state.room.matchHands)
+  if (host.state.room.matchMode !== 'hands' || host.state.room.matchHands !== 2) {
+    throw new Error('setMatch hands did not apply')
+  }
 
-  host.s.emit('game:setMatch', { mode: 'target', target: 0 }) // out of range
+  host.s.emit('game:setMatch', { mode: 'hands', hands: 0 }) // out of range
   await sleep(300)
-  console.log('target after invalid set (stays):', host.state.room.matchTarget)
+  console.log('hands after invalid set (stays):', host.state.room.matchHands)
+  if (host.state.room.matchHands !== 2) throw new Error('invalid hands value was accepted')
 
   host.s.emit('add_bot', { difficulty: 'medium' })
   host.s.emit('add_bot', { difficulty: 'medium' })
@@ -135,51 +127,57 @@ async function main() {
   host.s.emit('game:setSpeed', { fast: true })
   host.s.emit('game:start')
   await waitPhase(host, 'discard', 8000)
-  console.log('match started (1 human + 3 bots), phase', host.state.board.phase)
 
-  // Hand 1
+  // Hand 1: must NOT end the match.
   await playUntil(host, hostId)
-  let totals = host.state.scoredMeta?.totals ?? {}
-  console.log('hand 1 totals:', JSON.stringify(totals))
-  console.log('phase after hand 1:', host.state.board.phase, ' winner:', host.state.scoredMeta?.matchWinnerId)
-  if (Object.values(totals).length !== 4) throw new Error('totals missing players after hand 1')
+  console.log('hand 1: phase', host.state.board.phase, 'winner', host.state.scoredMeta?.matchWinnerId)
+  if (host.state.board.phase !== 'hand_over') throw new Error('hand 1 should not end the match')
+  if (host.state.scoredMeta?.matchWinnerId != null) throw new Error('match winner set before hands exhausted')
+  if (host.state.scoredMeta?.handsPlayed !== 1) throw new Error('handsPlayed should be 1 after hand 1')
+  const totals1 = { ...host.state.scoredMeta.totals }
+  console.log('hand 1 totals:', JSON.stringify(totals1))
 
-  // If nobody crossed 10 (unlikely), run more hands.
-  let handsPlayed = 1
-  while (host.state.board.phase !== 'game_over' && handsPlayed < 5) {
-    host.s.emit('game:restart')
-    await waitPhase(host, 'discard', 8000)
-    await playUntil(host, hostId)
-    handsPlayed++
-    totals = host.state.scoredMeta?.totals ?? {}
-    console.log(`hand ${handsPlayed} totals:`, JSON.stringify(totals))
-  }
-
-  console.log('match ended after', handsPlayed, 'hands; phase', host.state.board.phase)
-  if (host.state.board.phase !== 'game_over') throw new Error('match did not end in game_over')
-  const winnerId = host.state.scoredMeta?.matchWinnerId
-  if (!winnerId) throw new Error('matchWinnerId missing after match end')
-  const winnerScore = totals[winnerId]
-  if (winnerScore < 10) throw new Error(`winner ${winnerId} total ${winnerScore} below target 10`)
-
-  const dbBefore = dbRoom(code)
-  if (dbBefore.matchWinnerId !== winnerId) throw new Error('matchWinnerId not persisted')
-  console.log('winner', winnerId, 'at', winnerScore, '— game_over + persisted OK')
-
-  // New match: restart resets totals + winner.
+  // Hand 2: match ends, winner = highest running total.
   host.s.emit('game:restart')
   await waitPhase(host, 'discard', 8000)
-  const dbAfter = dbRoom(code)
-  console.log('after restart: scores =', JSON.stringify(dbAfter.scores), ' winner =', dbAfter.matchWinnerId)
-  if (Object.keys(dbAfter.scores).length !== 0) throw new Error('new match did not reset totals')
-  if (dbAfter.matchWinnerId !== null) throw new Error('new match did not clear winner')
+  await playUntil(host, hostId)
+  console.log('hand 2: phase', host.state.board.phase, 'winner', host.state.scoredMeta?.matchWinnerId)
+  if (host.state.board.phase !== 'game_over') throw new Error('hand 2 should end the match')
+  const meta = host.state.scoredMeta
+  if (meta.handsPlayed !== 2) throw new Error('handsPlayed should be 2 after hand 2')
+  const totals = meta.totals
+  const winnerId = meta.matchWinnerId
+  if (!winnerId) throw new Error('no match winner after hands exhausted')
+  const all = Object.values(totals)
+  if (totals[winnerId] !== Math.max(...all)) throw new Error('winner is not the highest total')
+  console.log('totals:', JSON.stringify(totals), '-> winner', winnerId, 'at', totals[winnerId])
 
-  console.log('MATCH TEST PASSED')
+  // Persisted state: winner + handsPlayed survive.
+  const db = new Database('data/bottleimp.db', { readonly: true })
+  const row = db.prepare('SELECT data FROM rooms WHERE code = ?').get(code)
+  db.close()
+  const persisted = JSON.parse(row.data)
+  if (persisted.matchWinnerId !== winnerId) throw new Error('matchWinnerId not persisted')
+  if (persisted.handsPlayed !== 2) throw new Error('handsPlayed not persisted')
+
+  // New match resets handsPlayed + totals.
+  host.s.emit('game:restart')
+  await waitPhase(host, 'discard', 8000)
+  const db2 = new Database('data/bottleimp.db', { readonly: true })
+  const row2 = db2.prepare('SELECT data FROM rooms WHERE code = ?').get(code)
+  db2.close()
+  const p2 = JSON.parse(row2.data)
+  console.log('after restart: scores =', JSON.stringify(p2.scores), 'winner =', p2.matchWinnerId, 'handsPlayed =', p2.handsPlayed)
+  if (Object.keys(p2.scores).length !== 0) throw new Error('new match did not reset totals')
+  if (p2.matchWinnerId !== null) throw new Error('new match did not clear winner')
+  if (p2.handsPlayed !== 0) throw new Error('new match did not reset handsPlayed')
+
+  console.log('BESTOF TEST PASSED')
   host.s.close()
   process.exit(0)
 }
 
 main().catch((e) => {
-  console.error('MATCH TEST FAILED:', e.message)
+  console.error('BESTOF TEST FAILED:', e.message)
   process.exit(1)
 })

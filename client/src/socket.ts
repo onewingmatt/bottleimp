@@ -62,9 +62,10 @@ export function connect(): Socket {
   socket.on('game:board', ({ game }) => {
     useStore.getState().setGame(game)
   })
-  socket.on('game:scored', ({ game, results, totals, matchWinnerId, matchTarget }) => {
+  socket.on('game:scored', ({ game, results, totals, matchWinnerId, matchTarget, matchMode, matchHands, handsPlayed }) => {
     useStore.getState().setGame(game)
     useStore.getState().setScored(results, totals, matchWinnerId, matchTarget)
+    useStore.setState({ matchMode: matchMode ?? 'target', matchHands: matchHands ?? 3, handsPlayed: handsPlayed ?? 0 })
     useStore.getState().setGameOver(game.phase === 'game_over')
   })
   socket.on('error', ({ message }) => {

@@ -34,22 +34,54 @@ export function Lobby() {
           <strong style={{ fontSize: '1.4rem', letterSpacing: 2 }}>{room.code}</strong>
         </div>
         {!room.inGame && isHost && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span className="muted">Match target:</span>
-            <input
-              type="number"
-              min={10}
-              max={1000}
-              value={room.matchTarget}
-              onChange={(e) => socket?.emit('game:setTarget', { target: Number(e.target.value) })}
-              style={{ ...inputStyle, width: 90, padding: '6px 8px' }}
-            />
-            <span className="muted">points</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            <span className="muted">Match:</span>
+            <button
+              className={room.matchMode === 'target' ? '' : 'secondary'}
+              onClick={() => socket?.emit('game:setMatch', { mode: 'target' })}
+              style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+            >
+              First to
+            </button>
+            <button
+              className={room.matchMode === 'hands' ? '' : 'secondary'}
+              onClick={() => socket?.emit('game:setMatch', { mode: 'hands' })}
+              style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+            >
+              Best of
+            </button>
+            {room.matchMode === 'target' ? (
+              <>
+                <input
+                  type="number"
+                  min={10}
+                  max={1000}
+                  value={room.matchTarget}
+                  onChange={(e) => socket?.emit('game:setMatch', { mode: 'target', target: Number(e.target.value) })}
+                  style={{ ...inputStyle, width: 80, padding: '6px 8px' }}
+                />
+                <span className="muted">points</span>
+              </>
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={room.matchHands}
+                  onChange={(e) => socket?.emit('game:setMatch', { mode: 'hands', hands: Number(e.target.value) })}
+                  style={{ ...inputStyle, width: 80, padding: '6px 8px' }}
+                />
+                <span className="muted">hands</span>
+              </>
+            )}
           </div>
         )}
         {room.inGame && (
           <div className="muted" style={{ marginBottom: 12 }}>
-            Match target: {room.matchTarget} points
+            {room.matchMode === 'target'
+              ? `Match: first to ${room.matchTarget} points`
+              : `Match: best of ${room.matchHands} hands (hand ${Math.min(room.handsPlayed + 1, room.matchHands)}/${room.matchHands})`}
           </div>
         )}
         <div>

@@ -40,10 +40,14 @@ This project is a fan implementation. The game rules are copyright Reiner Knizia
 ## Scoring (end of hand)
 - Each player scores the **sum of coins on cards in their won tricks**.
 - The player holding the Bottle Imp at hand end instead scores the **negative** of the sum of coins in the Imp's Trick (the face-down discards), and **ignores their own won-trick coins**.
-- Match: play to an agreed target (host sets it in the lobby, default 100).
-  The first player whose running total reaches the target wins; a new match
-  resets the totals. Implemented in `server/handlers.ts` (room.scores +
-  matchTarget/matchWinnerId); the engine itself stays single-hand.
+- Match: two modes, host picks in the lobby before starting.
+  - **Target** (default): play hands until a player's running total reaches
+    the target (default 100, range 10-1000); that player wins.
+  - **Best of N**: play exactly N hands (range 1-20); the highest running
+    total wins (ties → first in seat order).
+  Totals persist across hands and survive reconnects. Implemented in
+  `server/handlers.ts` (room.scores + matchMode/matchTarget/matchHands/
+  handsPlayed/matchWinnerId); the engine itself stays single-hand.
 
 ## Bot behavior
 - Bots must always play **legal** cards (follow suit if possible).

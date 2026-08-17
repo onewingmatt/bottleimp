@@ -12,6 +12,9 @@ export interface UIState {
   totals: Record<string, number> | null
   matchWinnerId: string | null
   matchTarget: number
+  matchMode: 'target' | 'hands'
+  matchHands: number
+  handsPlayed: number
   fastBots: boolean
   gameOver: boolean
   error: string | null
@@ -35,6 +38,9 @@ export const useStore = create<UIState>((set) => ({
   totals: null,
   matchWinnerId: null,
   matchTarget: 100,
+  matchMode: 'target',
+  matchHands: 3,
+  handsPlayed: 0,
   fastBots: false,
   gameOver: false,
   error: null,
@@ -47,6 +53,9 @@ export const useStore = create<UIState>((set) => ({
       reconnectToken: room.reconnectToken ?? s.reconnectToken,
       matchTarget: room.matchTarget ?? s.matchTarget,
       matchWinnerId: room.matchWinnerId ?? s.matchWinnerId,
+      matchMode: room.matchMode ?? s.matchMode,
+      matchHands: room.matchHands ?? s.matchHands,
+      handsPlayed: room.handsPlayed ?? s.handsPlayed,
       fastBots: room.fastBots ?? s.fastBots,
     })),
   setGame: (game) =>
@@ -77,6 +86,9 @@ export const useStore = create<UIState>((set) => ({
       totals: null,
       matchWinnerId: null,
       matchTarget: 100,
+      matchMode: 'target',
+      matchHands: 3,
+      handsPlayed: 0,
       fastBots: false,
       gameOver: false,
       error: null,

@@ -55,6 +55,9 @@ function roomPublic(room: Room) {
     pausedForReconnect: !!room.pausedForReconnect,
     matchTarget: room.matchTarget,
     matchWinnerId: room.matchWinnerId,
+    matchMode: room.matchMode,
+    matchHands: room.matchHands,
+    handsPlayed: room.handsPlayed,
     fastBots: room.botDelayMs === FAST_BOT_DELAY_MS,
     players: room.players.map((p) => ({
       id: p.id,
@@ -194,17 +197,31 @@ function afterMutation(room: Room): void {
       for (const line of scored) {
         room.scores[line.playerId] = (room.scores[line.playerId] ?? 0) + line.score
       }
-      // Match check: first to cross the target wins the match.
-      const crossed = scored.filter((s) => (room.scores[s.playerId] ?? 0) >= room.matchTarget)
-      if (crossed.length > 0) {
-        g.phase = 'game_over'
-        // Highest total among the crossed players; tie → first in seat order.
-        room.matchWinnerId = [...crossed].sort(
-          (a, b) => room.scores[b.playerId] - room.scores[a.playerId],
-        )[0].playerId
+      // Match check: target mode — first to cross the target wins. Hands
+      // mode — the match ends after matchHands hands; highest total wins.
+      const inTargetMode = room.matchMode === 'target'
+      room.handsPlayed = (room.handsPlayed ?? 0) + 1
+      let ended = false
+      if (inTargetMode) {
+        const crossed = scored.filter((s) => (room.scores[s.playerId] ?? 0) >= room.matchTarget)
+        ended = crossed.length > 0
+        if (ended) {
+          g.phase = 'game_over'
+          room.matchWinnerId = [...crossed].sort(
+            (a, b) => room.scores[b.playerId] - room.scores[a.playerId],
+          )[0].playerId
+        }
       } else {
-        room.matchWinnerId = null
+        ended = (room.handsPlayed ?? 0) >= room.matchHands
+        if (ended) {
+          g.phase = 'game_over'
+          // Highest total; ties → first in seat order.
+          room.matchWinnerId = [...scored].sort(
+            (a, b) => room.scores[b.playerId] - room.scores[a.playerId],
+          )[0].playerId
+        }
       }
+      if (!ended) room.matchWinnerId = null
     }
     // broadcast final results to everyone
     for (const p of room.players) {
@@ -217,6 +234,9 @@ function afterMutation(room: Room): void {
             totals: { ...room.scores },
             matchWinnerId: room.matchWinnerId,
             matchTarget: room.matchTarget,
+            matchMode: room.matchMode,
+            matchHands: room.matchHands,
+            handsPlayed: room.handsPlayed,
           })
         }
       }
@@ -300,6 +320,9 @@ export function registerHandlers(server: Server): void {
             totals: { ...room.scores },
             matchWinnerId: room.matchWinnerId,
             matchTarget: room.matchTarget,
+            matchMode: room.matchMode,
+            matchHands: room.matchHands,
+            handsPlayed: room.handsPlayed,
           })
         }
       }
@@ -383,21 +406,32 @@ export function registerHandlers(server: Server): void {
     // ------------------------------------------------------------------
     // Game
     // ------------------------------------------------------------------
-    socket.on('game:setTarget', ({ target } = {}) => {
+    socket.on('game:setMatch', ({ mode, target, hands } = {}) => {
       const room = getRoomBySocket(socket.id)
       if (!room) return
       const player = room.players.find((p) => p.socketId === socket.id)
       if (!player || player.id !== room.hostId) return
       if (room.game) {
-        socket.emit('error', { message: 'Target can only be set before the match starts' })
+        socket.emit('error', { message: 'Match settings can only be changed before the match starts' })
         return
       }
-      const n = Math.round(Number(target))
-      if (!Number.isFinite(n) || n < 10 || n > 1000) {
-        socket.emit('error', { message: 'Target must be between 10 and 1000' })
-        return
+      const m = mode === 'hands' ? 'hands' : 'target'
+      room.matchMode = m
+      if (m === 'target') {
+        const n = Math.round(Number(target))
+        if (!Number.isFinite(n) || n < 10 || n > 1000) {
+          socket.emit('error', { message: 'Target must be between 10 and 1000' })
+          return
+        }
+        room.matchTarget = n
+      } else {
+        const h = Math.round(Number(hands))
+        if (!Number.isFinite(h) || h < 1 || h > 20) {
+          socket.emit('error', { message: 'Hands must be between 1 and 20' })
+          return
+        }
+        room.matchHands = h
       }
-      room.matchTarget = n
       save(room)
       broadcastRoom(room, 'room:state', roomPublic(room))
     })
@@ -489,6 +523,7 @@ export function registerHandlers(server: Server): void {
       if (room.game.phase === 'game_over') {
         room.scores = {}
         room.matchWinnerId = null
+        room.handsPlayed = 0
       }
       room.game = createGame(
         room.players.map((p) => ({ id: p.id, name: p.name })),

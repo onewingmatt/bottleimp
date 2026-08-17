@@ -77,6 +77,9 @@ export function Table() {
   const totals = useStore((s) => s.totals)
   const matchWinnerId = useStore((s) => s.matchWinnerId)
   const matchTarget = useStore((s) => s.matchTarget)
+  const matchMode = useStore((s) => s.matchMode)
+  const matchHands = useStore((s) => s.matchHands)
+  const handsPlayed = useStore((s) => s.handsPlayed)
   const fastBots = useStore((s) => s.fastBots)
   const dismissScored = useStore((s) => s.dismissScored)
   const roomPaused = useStore((s) => s.room?.pausedForReconnect === true)
@@ -147,7 +150,9 @@ export function Table() {
       {/* Opponents */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <span className="muted" style={{ fontSize: '0.8rem' }}>
-          First to {matchTarget}
+          {matchMode === 'target'
+            ? `First to ${matchTarget}`
+            : `Best of ${matchHands} — hand ${Math.min(handsPlayed + 1, matchHands)}/${matchHands}`}
         </span>
         <button
           className="secondary"
@@ -304,7 +309,9 @@ export function Table() {
                     <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-2)' }}>
                       🏆 {matchWinner.name} wins the match!
                     </div>
-                    <div className="muted">First to {matchTarget} points</div>
+                    <div className="muted">
+                      {matchMode === 'target' ? `First to ${matchTarget} points` : `Best of ${matchHands} hands`}
+                    </div>
                   </div>
                 )}
               </>
@@ -355,7 +362,9 @@ export function Table() {
             ) : (
               <>
                 <div className="muted" style={{ fontSize: '0.8rem' }}>
-                  First to {matchTarget} — totals carry across hands.
+                  {matchMode === 'target'
+                    ? `First to ${matchTarget} — totals carry across hands.`
+                    : `Hand ${Math.min(handsPlayed, matchHands)} of ${matchHands} — totals carry across hands.`}
                 </div>
                 <button
                   onClick={() => {
@@ -412,7 +421,10 @@ export function Table() {
           {matchWinner && (
             <div style={{ margin: '10px 0', fontSize: '1.1rem', fontWeight: 700 }}>
               🏆 {matchWinner.name} won with {totals?.[matchWinner.id] ?? 0} points
-              <span className="muted"> (first to {matchTarget})</span>
+              <span className="muted">
+                {' '}
+                ({matchMode === 'target' ? `first to ${matchTarget}` : `best of ${matchHands} hands`})
+              </span>
             </div>
           )}
           <button onClick={() => socket?.emit('game:restart')} style={{ width: '100%' }}>

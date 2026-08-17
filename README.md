@@ -17,7 +17,9 @@ Mirrors the [medici](https://github.com/onewingmatt/medici) architecture:
 - Trick play: must follow suit (color) if possible. A card **lower than the current bottle price** is trump. If any trump is played, the **highest trump** wins; otherwise the highest card wins.
 - The trick winner takes the trick; if their winning card is a trump, they take the Bottle Imp and the price falls to that card's number. The previous price card goes to the former bottle owner's won tricks.
 - Hand ends when all cards are played. Score coins on cards in your won tricks — **except** the player holding the Bottle, who scores **negative** coins from the Imp's Trick and ignores their own tricks.
-- **Matches:** play hands until someone reaches the target score (host sets it in the lobby, default 100); that player wins the match. Totals persist across hands and survive reconnects.
+- **Matches:** two modes, host picks in the lobby. **First to N** (target
+  score, default 100) or **Best of N** (fixed hands, highest total wins).
+  Totals persist across hands and survive reconnects.
 
 ## Run locally
 ```bash

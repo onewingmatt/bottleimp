@@ -49,7 +49,10 @@ export interface RoomState {
   inGame: boolean
   pausedForReconnect?: boolean
   fastBots?: boolean
+  matchMode: 'target' | 'hands'
   matchTarget: number
+  matchHands: number
+  handsPlayed: number
   matchWinnerId: string | null
   players: RoomPlayer[]
   reconnectToken?: string
