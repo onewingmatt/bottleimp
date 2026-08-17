@@ -53,7 +53,7 @@ export function Lobby() {
         </div>
         {isHost && (
           <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => (
+            {(['easy', 'medium', 'hard', 'expert'] as Difficulty[]).map((d) => (
               <button
                 key={d}
                 className="secondary"

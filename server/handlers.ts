@@ -343,7 +343,7 @@ export function registerHandlers(server: Server): void {
         socket.emit('error', { message: 'Room is full' })
         return
       }
-      const d = difficulty === 'easy' || difficulty === 'hard' ? difficulty : 'medium'
+      const d = difficulty === 'easy' || difficulty === 'hard' || difficulty === 'expert' ? difficulty : 'medium'
       const bot = newRoomPlayer(`Bot ${room.players.filter((p) => p.isBot).length + 1}`, true, d)
       room.players.push(bot)
       save(room)

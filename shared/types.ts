@@ -8,7 +8,7 @@ export interface Card {
   coins: number // 1-6
 }
 
-export type Difficulty = 'easy' | 'medium' | 'hard'
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert'
 
 export type Phase = 'discard' | 'exchange' | 'playing' | 'hand_over' | 'game_over'
 
