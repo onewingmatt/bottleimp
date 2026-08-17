@@ -11,7 +11,6 @@
   --red: #e05252;
   --blue: #4f8cc4;
   --yellow: #e8b93e;
-  --green: #5cb85c;
 }
 
 * {
@@ -79,8 +78,8 @@ h1 {
 .card.suit-blue {
   border-left: 6px solid var(--blue);
 }
-.card.suit-green {
-  border-left: 6px solid var(--green);
+.card.suit-yellow {
+  border-left: 6px solid var(--yellow);
 }
 
 .card.selected {

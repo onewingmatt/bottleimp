@@ -40,14 +40,14 @@ function buildTrickLog(history: unknown[]): TrickLogEntry[] {
 const SUIT_COLOR: Record<string, string> = {
   red: '#e05252',
   blue: '#4f8cc4',
-  green: '#5cb85c',
+  yellow: '#e8b93e',
 }
 const SUIT_SYMBOL: Record<string, string> = {
   red: '●',
   blue: '■',
-  green: '▲',
+  yellow: '▲',
 }
-const SUIT_ORDER = ['red', 'blue', 'green']
+const SUIT_ORDER = ['red', 'blue', 'yellow']
 
 function CardView({ card, onClick, selected, playable }: {
   card: Card

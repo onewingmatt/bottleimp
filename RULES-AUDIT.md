@@ -8,16 +8,16 @@ This project is a fan implementation. The game rules are copyright Reiner Knizia
 - BGG forum threads for the 1995 edition
 
 ## Deck
-- **36 suit cards**, numbered **1–37**, in **three colors** (red, blue, green), each color holding exactly **12 cards**.
-- Suit layout is **interleaved**, not contiguous blocks. Verified against the publisher's player aid (Matagot/Grail 2023 edition, which keeps the classic 1–37 distribution):
+- **36 suit cards**, numbered **1–37**, in **three colors** (red, blue, **yellow** — the 1995 edition's third suit is yellow, not green), each color holding exactly **12 cards** (rules PDF: "12 each of blue, red and yellow suits").
+- Suit layout is **interleaved**, not contiguous blocks. A contiguous split (yellow 1–12, blue 13–24, red 25–37) cannot satisfy 12/12/12 because 19 falls inside one range, and the rules recommend sorting by number rather than color, implying interleaving. The exact interleaving is taken from the publisher's player aid of the edition that keeps the classic 1–37 distribution:
   - red:   1, 2, 4, 5, 7, 9, 12, 15, 18, 22, 25, 28
   - blue:  3, 6, 8, 10, 13, 17, 20, 23, 27, 30, 32, 35
-  - green: 11, 14, 16, 21, 24, 26, 29, 31, 33, 34, 36, 37
+  - yellow: 11, 14, 16, 21, 24, 26, 29, 31, 33, 34, 36, 37
   Locked by `test/deck.test.ts`.
 - Each card has a **coin value 1–6** for scoring (small bottle icons on the card face).
 - **1 neutral card "19"** — the start value / current price of the Bottle. It is not a playable suit card; it sits face-up and is never played to tricks.
 - 37 physical cards total (36 + 19 + Bottle token + reference cards).
-- Coin-value assignment: the exact per-card coin distribution is NOT printed on any public reference we found (player aid shows suit colors only, not coin values). We assign coins 1–6 per a consistent cycling pattern in `shared/constants.ts` (COIN_BY_NUMBER). **Flagged**: exact coin layout may vary by edition; this affects only scoring totals, not legality of play.
+- Coin-value assignment: the exact per-card coin distribution is NOT printed on any public reference we could find (the reference card in the rules shows suit colors only; the per-card coins are printed only on physical cards, and the 1995 reference card scan is too low-res to read reliably). We assign coins 1–6 per a consistent cycling pattern in `shared/constants.ts` (COIN_BY_NUMBER). **Flagged**: exact coin layout varies by edition (Joe Huber, Games Journal 2002: later editions "changed colour and scoring values"); this affects only scoring totals, not legality of play. The 1–6 range and the "higher points near the bottle price" design are verified; the exact per-number values are the one remaining unverified assumption.
 
 ## Deal
 - 3 players: 12 cards each; 4 players: 9 each. All 36 suit cards are dealt.
